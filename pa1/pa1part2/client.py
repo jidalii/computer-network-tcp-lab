@@ -7,10 +7,10 @@ import random
 class TCPClient:
     def __init__(self, inputs):
         self.server_addr = (inputs.ip, inputs.port)
-        self.measure_type = inputs.measure_type
-        self.probes_num = inputs.probes_num
-        self.msg_size = inputs.msg_size
-        self.server_dalay = inputs.server_dalay
+        self.measure_type = inputs.measure
+        self.probes_num = int(inputs.probes)
+        self.msg_size = int(inputs.bytes)
+        self.server_dalay = int(inputs.delay)
         self.payload = ""
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
@@ -37,7 +37,7 @@ def parse_args():
     parser.add_argument('ip', type=str, help='Host IP')
     parser.add_argument('port', type=int, help='Port number')
 
-    parser.add_argument('-t', '--type', type=str, choices=['rtt', 'tput'], default='rtt',
+    parser.add_argument('-t', '--measure', type=str, choices=['rtt', 'tput'], default='rtt',
                         help='Measurement Type, e.g., rtt')
     parser.add_argument('-b', '--bytes', type=int, help='Size of the data in bytes', default=1)
     parser.add_argument('-p', '--probes', type=int, help='Number of probes', default=1)
@@ -56,15 +56,17 @@ def main():
 
     # 1. Connection Phase
     conn_msg = client.construct_init_msg()
+    print(f"CLIENT-conn_msg:{conn_msg}")
     client.socket.send(conn_msg.encode())
     response = client.socket.recv(1024).decode()
 
     # 2. Probing Phase
-    if response == http_resp.CONN_RESP_200:
+    if response == http_resp.CONN_RESP_404:
         return
-    elif response == http_resp.RESP_200:
+    elif response == http_resp.CONN_RESP_200:
         client.generate_payload()
         for i in range(1, inputs.probes+1):
+            print(f"CLIENT-probe_num:{i}")
             msg = client.construct_prob_msg(i)
             client.socket.send(msg.encode())
             resp = client.socket.recv(1024).decode()

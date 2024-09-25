@@ -13,6 +13,7 @@ class TCPServer:
         self.conn_socket: socket.socket = None
     
     def validate_client_conn_msg(self, msg: str) -> bool:
+        print(f"SERVER-conn_msg:{msg}")
         if msg[-1] != '\n':
             return False
         msg_arr = msg.split(" ")
@@ -42,6 +43,7 @@ class TCPServer:
             return False
 
     def validate_client_probe_msg(self, msg: str, seq_num: int) -> bool:
+        print(f"SERVER-probe_msg:{msg}")
         if msg[-1] != '\n':
             return False
         
@@ -86,17 +88,19 @@ def main():
             for i in range(1, server.probes_num+1):
                 msg = server.conn_socket.recv(server.msg_size)
                 recv_ts = time.time_ns()
-                msg.decode()
+                msg = msg.decode()
                 if not server.validate_client_probe_msg(msg, i):
                     server.conn_socket.send(http_resp.PROB_RESP_404.encode())
                 end_ts = time.time_ns()
                 print(f"recv_ts:{recv_ts},end_ts:{end_ts}")
+                server.conn_socket.send(http_resp.CONN_RESP_200.encode())
             
             msg = server.conn_socket.recv(1024).decode()
             if not server.validate_client_termination_msg(msg):
                 server.conn_socket.send(http_resp.CLOSE_RESP_404.encode())
             else:
                 server.conn_socket.send(http_resp.CLOSE_RESP_200.encode())
+            server.conn_socket.close()
                 
                 
             
