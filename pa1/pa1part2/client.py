@@ -3,6 +3,7 @@ import http_resp
 import argparse
 import string
 import random
+import time
 
 class TCPClient:
     def __init__(self, inputs):
@@ -62,32 +63,49 @@ def main():
 
     # 2. Probing Phase
     if response == http_resp.CONN_RESP_404:
+        print(http_resp.CONN_RESP_404)
+        print("CLIENT: terminated")
         return
     elif response == http_resp.CONN_RESP_200:
         client.generate_payload()
+        start_ts = time.time_ns()
         for i in range(1, inputs.probes+1):
-            print(f"CLIENT-probe_num:{i}")
+            # print(f"CLIENT-sending msg num#{i}")
             msg = client.construct_prob_msg(i)
             client.socket.send(msg.encode())
-            resp = client.socket.recv(1024).decode()
+            resp = client.socket.recv(client.msg_size).decode()
             if response == http_resp.CONN_RESP_200:
-                pass
+                continue
             elif resp == http_resp.CONN_RESP_404:
+                print(http_resp.CONN_RESP_404)
+                print("CLIENT: terminated")
                 return
             else:
                 print("CLIENT: unknown resp during probe process:\n", resp)
                 client.socket.close()
                 return
-            
+        end_ts = time.time_ns()    
+        
     # 3. Termination Phase
     msg = client.construct_termination_msg()
     client.socket.send(msg.encode())
     resp = client.socket.recv(1024).decode()
     
     client.socket.close()
+    
+    total_time = (end_ts-start_ts)/1e9
+    RTT = total_time/client.probes_num
+    tput = client.probes_num / total_time
+    print(f"CLIENT-total_time:{total_time}")
+    print(f"CLIENT-RTT:{RTT}")
+    print(f"CLIENT-tput:{tput}")
+    
     if resp == http_resp.CLOSE_RESP_200:
         return
     elif resp == http_resp.CLOSE_RESP_404:
+        print(http_resp.CONN_RESP_404)
         return
+    print("CLIENT: terminated")
+    
     
 main()
