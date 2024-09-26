@@ -1,16 +1,17 @@
 #!/bin/bash
 
 packet_size=100
-port=58000
+port=58500
+packet_sizes=(1 100 200 400 800 1000)
+# packet_sizes=(1000 2000 4000 8000 16000 32000)
 
-# Start the server in the background and log to log_server.txt
-python server.py $port >> ./data/log_server_${packet_size}.txt 2>&1 &
+for i in "${packet_sizes[@]}"; do
+    port=$((port + 1))
+    python server.py $port >> ./data/log_server_tput.txt 2>&1 &
 
-# Wait for 1 second to give the server time to start
-sleep 1
+    sleep 2
 
-# Start the client in the foreground and log to log_client.txt
-python client.py localhost $port -t rtt -b $packet_size -p 10 -d 0 >> ./data/log_client_${packet_size}.txt 2>&1
+    python client.py localhost $port tput $i 1200 0 >> ./data/log_client_tput.txt 2>&1
 
-# Wait for all background processes to finish
-wait
+    wait
+done

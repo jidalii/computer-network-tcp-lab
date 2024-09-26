@@ -1,17 +1,18 @@
 import socket
 import http_resp
-import argparse
+# import argparse
 import string
 import random
+import sys
 import time
 
 class TCPClient:
     def __init__(self, inputs):
-        self.server_addr = (inputs.ip, inputs.port)
-        self.measure_type = inputs.measure
-        self.probes_num = int(inputs.probes)
-        self.msg_size = int(inputs.bytes)
-        self.server_dalay = int(inputs.delay)
+        self.server_addr = (inputs['ip'], inputs['port'])
+        self.measure_type = inputs['measure']
+        self.probes_num = int(inputs['probes'])
+        self.msg_size = int(inputs['bytes'])
+        self.server_dalay = int(inputs['delay'])
         self.payload = ""
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
@@ -19,9 +20,9 @@ class TCPClient:
         self.socket.connect(self.server_addr)
 
     def generate_payload(self):
-        characters = string.ascii_letters + string.digits
+        characters = string.digits + string.ascii_letters
         random_string = ''.join(random.choice(characters) for _ in range(self.msg_size))
-        return random_string
+        self.payload = random_string
 
     def construct_init_msg(self)-> str:
         return f"s {self.measure_type} {self.probes_num} {self.msg_size} {self.server_dalay}\n"
@@ -33,18 +34,18 @@ class TCPClient:
         return 't\n'
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Process some network parameters.')
-
-    parser.add_argument('ip', type=str, help='Host IP')
-    parser.add_argument('port', type=int, help='Port number')
-
-    parser.add_argument('-t', '--measure', type=str, choices=['rtt', 'tput'], default='rtt',
-                        help='Measurement Type, e.g., rtt')
-    parser.add_argument('-b', '--bytes', type=int, help='Size of the data in bytes', default=1)
-    parser.add_argument('-p', '--probes', type=int, help='Number of probes', default=1)
-    parser.add_argument('-d', '--delay', type=int, help='The delay time in ms', default=0)
-
-    args = parser.parse_args()
+    if len(sys.argv) != 7:
+        print("Usage: python client.py <HOST> <PORT> <MEASURE> <MSG_SIZE> <PROBES_NUM> <DELAY>")
+        sys.exit(1)
+        
+    args = {}
+    args['ip'] = str(sys.argv[1])
+    args['port'] = int(sys.argv[2])
+    args['measure'] = str(sys.argv[3])
+    args['bytes'] = int(sys.argv[4])
+    args['probes'] = int(sys.argv[5])
+    args['delay'] = int(sys.argv[6])
+    
     return args
 
 def main():
@@ -54,10 +55,8 @@ def main():
     client = TCPClient(inputs)
     client.connect()
 
-
     # 1. Connection Phase
     conn_msg = client.construct_init_msg()
-    print(f"CLIENT-conn_msg:{conn_msg}")
     client.socket.send(conn_msg.encode())
     response = client.socket.recv(1024).decode()
 
@@ -69,16 +68,15 @@ def main():
     elif response == http_resp.CONN_RESP_200:
         client.generate_payload()
         start_ts = time.time_ns()
-        for i in range(1, inputs.probes+1):
-            # print(f"CLIENT-sending msg num#{i}")
+        for i in range(1, inputs['probes']+1):
             msg = client.construct_prob_msg(i)
             client.socket.send(msg.encode())
-            resp = client.socket.recv(client.msg_size).decode()
+            resp = client.socket.recv(client.msg_size*10)
+            resp = resp.decode()
             if response == http_resp.CONN_RESP_200:
                 continue
             elif resp == http_resp.CONN_RESP_404:
                 print(http_resp.CONN_RESP_404)
-                print("CLIENT: terminated")
                 return
             else:
                 print("CLIENT: unknown resp during probe process:\n", resp)
@@ -96,16 +94,17 @@ def main():
     total_time = (end_ts-start_ts)/1e9
     RTT = total_time/client.probes_num
     tput = client.probes_num / total_time
-    print(f"CLIENT-total_time:{total_time}")
-    print(f"CLIENT-RTT:{RTT}")
-    print(f"CLIENT-tput:{tput}")
+    if client.measure_type == 'tput':
+        print(f"CLIENT-{client.msg_size}-tput-{tput}")
+    elif client.measure_type == 'rtt':
+        print(f"CLIENT-{client.msg_size}-RTT-{RTT}")
+    
     
     if resp == http_resp.CLOSE_RESP_200:
         return
     elif resp == http_resp.CLOSE_RESP_404:
         print(http_resp.CONN_RESP_404)
         return
-    print("CLIENT: terminated")
     
     
 main()

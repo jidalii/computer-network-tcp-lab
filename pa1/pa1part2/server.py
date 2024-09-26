@@ -44,7 +44,7 @@ class TCPServer:
     def validate_client_probe_msg(self, msg: str, seq_num: int) -> bool:
         if msg[-1] != '\n':
             return False
-        
+        msg = msg.strip()
         msg_arr = msg.split(" ")
         if len(msg_arr) != 3:
             return False
@@ -76,26 +76,28 @@ def main():
 
     while True:
         server.conn_socket, _ = server.socket.accept()
-        msg = server.conn_socket.recv(1024).decode()
+        msg = server.conn_socket.recv(2048).decode()
         is_valid = server.validate_client_conn_msg(msg)
         if not is_valid:
             server.conn_socket.send(http_resp.CONN_RESP_404.encode())
             server.conn_socket.close()
+            print(http_resp.CONN_RESP_404)
             return
         else:
             server.conn_socket.send(http_resp.CONN_RESP_200.encode())
             # recv probing msg from clients
             
             for i in range(1, server.probes_num+1):
-                msg = server.conn_socket.recv(server.msg_size)
+                msg = server.conn_socket.recv(server.msg_size+200)
                 # recv_ts = time.time_ns()
                 if server.delay != 0:
                     time.sleep(server.delay/1000)
                 msg = msg.decode()
                 if not server.validate_client_probe_msg(msg, i):
                     server.conn_socket.send(http_resp.PROB_RESP_404.encode())
-                # end_ts = time.time_ns()
-                # print(f"recv_ts:{recv_ts},end_ts:{end_ts}")
+                    server.conn_socket.close()
+                    print(http_resp.PROB_RESP_404)
+                    return
                 server.conn_socket.send(msg.encode())
             
             msg = server.conn_socket.recv(1024).decode()
