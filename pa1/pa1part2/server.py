@@ -98,6 +98,7 @@ def main():
                     server.conn_socket.close()
                     print(http_resp.PROB_RESP_404)
                     return
+                print(f"SERVER,RECV,{msg}")
                 server.conn_socket.send(msg.encode())
             
             msg = server.conn_socket.recv(1024).decode()
