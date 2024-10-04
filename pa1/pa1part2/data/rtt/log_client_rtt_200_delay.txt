@@ -1,0 +1,48 @@
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 130, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 69, in main
+    client.connect()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 22, in connect
+    self.socket.connect(self.server_addr)
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 130, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 69, in main
+    client.connect()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 22, in connect
+    self.socket.connect(self.server_addr)
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 130, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 69, in main
+    client.connect()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 22, in connect
+    self.socket.connect(self.server_addr)
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 130, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 69, in main
+    client.connect()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 22, in connect
+    self.socket.connect(self.server_addr)
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 130, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 69, in main
+    client.connect()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 22, in connect
+    self.socket.connect(self.server_addr)
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 130, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 69, in main
+    client.connect()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 22, in connect
+    self.socket.connect(self.server_addr)
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known

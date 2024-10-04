@@ -70,8 +70,11 @@ def main():
 
     # 1. Connection Phase
     conn_msg = client.construct_init_msg()
-    client.socket.send(conn_msg.encode())
-    response = client.socket.recv(1024).decode()
+    conn_msg = conn_msg.encode()
+    client.socket.sendall(conn_msg)
+    response = client.socket.recv(2048).decode()
+    
+    time_ls = []
 
     # 2. Probing Phase
     if response == http_resp.CONN_RESP_404:
@@ -79,33 +82,39 @@ def main():
         print("CLIENT: terminated")
         return
     elif response == http_resp.CONN_RESP_200:
-        start_ts = time.time_ns()
+        
         for i in range(1, inputs["probes"] + 1):
             client.generate_payload()
             msg = client.construct_prob_msg(i)
+            
             print(f"CLIENT,SENT,{msg}")
-            client.socket.send(msg.encode())
-            resp = client.socket.recv(client.msg_size + 100)
+            msg = msg.encode()
+            start_ts = time.time_ns()
+            client.socket.sendall(msg)
+            resp = client.socket.recv(client.msg_size+10)
+            end_ts = time.time_ns()
+            time_ls.append(end_ts-start_ts)
             resp = resp.decode()
             if response == http_resp.CONN_RESP_200:
                 continue
-            elif resp == http_resp.CONN_RESP_404:
-                print(http_resp.CONN_RESP_404)
+            elif resp == http_resp.PROB_RESP_404:
+                print(http_resp.PROB_RESP_404)
                 return
             else:
                 print("CLIENT: unknown resp during probe process:\n", resp)
                 client.socket.close()
                 return
-        end_ts = time.time_ns()
+        
 
     # 3. Termination Phase
     msg = client.construct_termination_msg()
-    client.socket.send(msg.encode())
+    msg = msg.encode()
+    client.socket.sendall(msg)
     resp = client.socket.recv(1024).decode()
 
     client.socket.close()
 
-    total_time = (end_ts - start_ts) / 1e9
+    total_time = (sum(time_ls)/ len(time_ls)) / 1e9
     RTT = total_time / client.probes_num
     tput = client.probes_num / total_time
     
@@ -123,7 +132,7 @@ def main():
     if resp == http_resp.CLOSE_RESP_200:
         return
     elif resp == http_resp.CLOSE_RESP_404:
-        print(http_resp.CONN_RESP_404)
+        print(http_resp.CLOSE_RESP_404)
         return
 
 

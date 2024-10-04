@@ -2,6 +2,8 @@ import socket
 import sys
 import http_resp
 import time
+from signal import signal, SIGPIPE, SIG_DFL   
+
 
 class TCPServer:
     def __init__(self) -> None:
@@ -15,7 +17,7 @@ class TCPServer:
     def validate_client_conn_msg(self, msg: str) -> bool:
         if msg[-1] != '\n':
             return False
-        msg_arr = msg.split(" ")
+        msg_arr = msg.strip().split(" ")
 
         if len(msg_arr) != 5:
             return False
@@ -63,6 +65,7 @@ class TCPServer:
         return msg == "t\n"
 
 def main():
+    signal(SIGPIPE,SIG_DFL) 
     if len(sys.argv) != 2:
         print("Usage: python server.py <PORT>")
         sys.exit(1)
@@ -76,36 +79,42 @@ def main():
 
     while True:
         server.conn_socket, _ = server.socket.accept()
-        msg = server.conn_socket.recv(2048).decode()
-        is_valid = server.validate_client_conn_msg(msg)
+        nack_msg = server.conn_socket.recv(2048).decode()
+        is_valid = server.validate_client_conn_msg(nack_msg)
         if not is_valid:
-            server.conn_socket.send(http_resp.CONN_RESP_404.encode())
+            err = http_resp.CONN_RESP_404.encode()
+            server.conn_socket.sendall(err)
             server.conn_socket.close()
             print(http_resp.CONN_RESP_404)
             return
         else:
-            server.conn_socket.send(http_resp.CONN_RESP_200.encode())
+            ack_msg = http_resp.CONN_RESP_200.encode()
+            server.conn_socket.sendall(ack_msg)
             # recv probing msg from clients
             
             for i in range(1, server.probes_num+1):
                 msg = server.conn_socket.recv(server.msg_size+200)
-                # recv_ts = time.time_ns()
                 if server.delay != 0:
                     time.sleep(server.delay/1000)
                 msg = msg.decode()
                 if not server.validate_client_probe_msg(msg, i):
-                    server.conn_socket.send(http_resp.PROB_RESP_404.encode())
+                    nack_msg = http_resp.PROB_RESP_404.encode()
+                    server.conn_socket.sendall(nack_msg)
                     server.conn_socket.close()
                     print(http_resp.PROB_RESP_404)
                     return
                 print(f"SERVER,RECV,{msg}")
-                server.conn_socket.send(msg.encode())
+                msg = msg.encode()
+                server.conn_socket.sendall(msg)
             
-            msg = server.conn_socket.recv(1024).decode()
+            msg = server.conn_socket.recv(100)
+            msg = msg.decode()
             if not server.validate_client_termination_msg(msg):
-                server.conn_socket.send(http_resp.CLOSE_RESP_404.encode())
+                nack_msg = http_resp.CLOSE_RESP_404.encode()
+                server.conn_socket.sendall(nack_msg)
             else:
-                server.conn_socket.send(http_resp.CLOSE_RESP_200.encode())
+                ack_msg = http_resp.CLOSE_RESP_200.encode()
+                server.conn_socket.sendall(ack_msg)
             server.conn_socket.close()
             return
                 
