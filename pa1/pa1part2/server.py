@@ -76,6 +76,7 @@ def main():
     server.socket.bind(server_address)
     server.socket.listen(1)
     print(f"Server is listening on {server_address}")
+    print("Waiting for a connection...")
 
     while True:
         server.conn_socket, _ = server.socket.accept()
@@ -118,7 +119,4 @@ def main():
             server.conn_socket.close()
             return
                 
-                
-            
-
 main()

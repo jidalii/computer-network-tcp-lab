@@ -75,34 +75,39 @@ def main():
     response = client.socket.recv(2048).decode()
     
     time_ls = []
+    total_data = 0
 
     # 2. Probing Phase
     if response == http_resp.CONN_RESP_404:
-        print(http_resp.CONN_RESP_404)
+        print(f"CLIENT encountered error: {http_resp.CONN_RESP_404}")
         print("CLIENT: terminated")
         return
     elif response == http_resp.CONN_RESP_200:
-        
+        print("CLIENT:connected to the server")
         for i in range(1, inputs["probes"] + 1):
             client.generate_payload()
             msg = client.construct_prob_msg(i)
             
-            print(f"CLIENT,SENT,{msg}")
+            print(f"CLIENT sending: {msg}")
             msg = msg.encode()
             start_ts = time.time_ns()
             client.socket.sendall(msg)
             resp = client.socket.recv(client.msg_size+10)
             end_ts = time.time_ns()
             time_ls.append(end_ts-start_ts)
+            total_data += len(resp)
             resp = resp.decode()
             if response == http_resp.CONN_RESP_200:
                 continue
             elif resp == http_resp.PROB_RESP_404:
-                print(http_resp.PROB_RESP_404)
+                print(f"CLIENT encountered error: {http_resp.PROB_RESP_404}")
+                client.socket.close()
+                print("CLIENT: terminated")
                 return
             else:
                 print("CLIENT: unknown resp during probe process:\n", resp)
                 client.socket.close()
+                print("CLIENT: terminated")
                 return
         
 
@@ -116,16 +121,15 @@ def main():
 
     total_time = (sum(time_ls)/ len(time_ls)) / 1e9
     RTT = total_time / client.probes_num
-    tput = client.probes_num / total_time
+    tput = total_data / total_time
     
     print("-" * 30)
     print("***** SUMMARY *****")
     print(client.summary())
     if client.measure_type == "tput":
-        
         print(f"RESULT:{client.msg_size},tput,{tput}")
     elif client.measure_type == "rtt":
-        print(f"RESULT:{client.msg_size},RTT,{RTT}")
+        print(f"RESULT:{client.msg_size},rtt,{RTT}")
     print("-" * 30)
     print()
 
@@ -134,6 +138,7 @@ def main():
     elif resp == http_resp.CLOSE_RESP_404:
         print(http_resp.CLOSE_RESP_404)
         return
+    print("CLIENT: terminated")
 
 
 main()
