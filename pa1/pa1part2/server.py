@@ -108,7 +108,7 @@ def main():
                 msg = msg.encode()
                 server.conn_socket.sendall(msg)
             
-            msg = server.conn_socket.recv(100)
+            msg = server.conn_socket.recv(1024)
             msg = msg.decode()
             if not server.validate_client_termination_msg(msg):
                 nack_msg = http_resp.CLOSE_RESP_404.encode()

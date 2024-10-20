@@ -1,0 +1,54 @@
+Server is listening on ('', 58501)
+Server is listening on ('', 58502)
+Server is listening on ('', 58503)
+Server is listening on ('', 58504)
+Server is listening on ('', 58505)
+Server is listening on ('', 58506)
+Server is listening on ('', 58501)
+Server is listening on ('', 58502)
+Server is listening on ('', 58503)
+Server is listening on ('', 58504)
+Server is listening on ('', 58505)
+Server is listening on ('', 58506)
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/server.py", line 114, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/server.py", line 73, in main
+    server.socket.bind(server_address)
+OSError: [Errno 48] Address already in use
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/server.py", line 114, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/server.py", line 73, in main
+    server.socket.bind(server_address)
+OSError: [Errno 48] Address already in use
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/server.py", line 114, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/server.py", line 73, in main
+    server.socket.bind(server_address)
+OSError: [Errno 48] Address already in use
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/server.py", line 114, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/server.py", line 73, in main
+    server.socket.bind(server_address)
+OSError: [Errno 48] Address already in use
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/server.py", line 114, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/server.py", line 73, in main
+    server.socket.bind(server_address)
+OSError: [Errno 48] Address already in use
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/server.py", line 114, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/server.py", line 73, in main
+    server.socket.bind(server_address)
+OSError: [Errno 48] Address already in use
+Server is listening on ('', 58001)
+Server is listening on ('', 58002)
+Server is listening on ('', 58003)
+Server is listening on ('', 58004)
+Server is listening on ('', 58005)
+Server is listening on ('', 58006)

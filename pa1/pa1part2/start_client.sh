@@ -7,7 +7,7 @@ delay=0
 measure="tput"
 probes=10
 
-log_file="./data/log_client_${measure}_${delay}_delay_1.txt"
+log_file="./data/log_client_${measure}_${delay}_delay_5.txt"
 
 > $log_file
 

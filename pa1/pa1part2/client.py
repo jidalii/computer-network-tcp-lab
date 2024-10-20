@@ -1,7 +1,6 @@
 import socket
 import http_resp
 
-# import argparse
 import string
 import random
 import sys
@@ -92,7 +91,7 @@ def main():
             msg = msg.encode()
             start_ts = time.time_ns()
             client.socket.sendall(msg)
-            resp = client.socket.recv(client.msg_size+10)
+            resp = client.socket.recv(len(msg)+20)
             end_ts = time.time_ns()
             time_ls.append(end_ts-start_ts)
             total_data += len(resp)
