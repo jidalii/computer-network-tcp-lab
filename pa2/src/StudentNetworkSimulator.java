@@ -109,12 +109,12 @@ public class StudentNetworkSimulator extends NetworkSimulator {
 
     private double rtt = 0;
     private double communicationTime = 0;
-    private int numPacket = 0; // this variable marks the number of packets need to be transmitted.
-    private int numTransmit = 0; // this variable marks the times of toLayer3 called by any side.
-    private int numACK = 0; // this variable marks the times of ACKs sent from B-side.
-    private int numCorrupted = 0; // this variable marks the number of corrupted packets.
-    private int numReceived = 0; // this variable marks the number of packets successfully transmitted between A
-                                 // and B
+    private int numPacket = 0; // the number of packets need to be transmitted.
+    private int numTransmit = 0; // the times of toLayer3 called by any side.
+    private int numACK = 0; // the times of ACKs sent from B-side.
+    private int numCorrupted = 0; // the number of corrupted packets.
+    private int numReceived = 0; // the number of packets successfully transmitted between A and B
+    private int numRetransmit = 0;
 
     // This is the constructor. Don't touch!
     public StudentNetworkSimulator(int numMessages,
@@ -131,29 +131,26 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         RmtInterval = delay;
     }
 
-    private int computeChecksum(int sequence, int ack, String data) {
-        int ans = 0;
-        for (int i = 0; i < data.length(); i++) {
-            ans = ans + data.charAt(i);
+    protected int computeChecksum(Packet packet) {
+        int res = 0;
+        for (int i = 0; i < packet.getPayload().length(); i++) {
+            res += packet.getPayload().charAt(i);
         }
-        return ans + sequence + ack;
+        res += packet.getSeqnum() + packet.getAcknum();
+        return res;
     }
 
     // this function is used to check if a packet is corrupted during transmission
     protected boolean validateChecksum(Packet packet) {
-        // if corrupt return false, else return true.
-        int checkSum = computeChecksum(packet.getSeqnum(), packet.getAcknum(), packet.getPayload());
-        if (checkSum != packet.getChecksum()) {
-            numCorrupted++;
-            return false;
-        }
-        return true;
+        int checkSum = computeChecksum(packet);
+        return checkSum == packet.getChecksum();
     }
 
     protected Packet constructPacket(Message m) {
         int ack = 0;
-        int checkSum = computeChecksum(sequence, ack, m.getData());
-        Packet p = new Packet(sequence, ack, checkSum, m.getData());
+        Packet p = new Packet(sequence, ack, -1, m.getData());
+        int checkSum = computeChecksum(p);
+        p.setChecksum(checkSum);
         return p;
     }
 
@@ -175,9 +172,9 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         senderWindow.add(myPacket);
         if (senderWindow.size() <= senderStartPointer + WindowSize - 1) {
             myPacket.setSendTime(getTime());
-            myPacket.setChecksum(computeChecksum(myPacket.getSeqnum(), myPacket.getAcknum(), myPacket.getPayload()));
             toLayer3(A, myPacket);
             numTransmit++;
+            stopTimer(A);
             startTimer(A, RmtInterval);
         }
     }
@@ -188,14 +185,18 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     // sent from the B-side.
     protected void aInput(Packet packet) {
         numReceived++; // successfully transmitted.
+        System.out.println(
+                "|aInput|: Get ACK from B, packet is: seqnum: " + packet.getSeqnum() + ", ack: " + packet.getAcknum()
+                        + ", checksum: " + packet.getAcknum() + "payload: " + packet.getPayload());
 
-        // TODO check corruption --> drop, return
+        // if corruption, return redirectly
         if (!validateChecksum(packet)) {
+            numCorrupted++;
             return;
         }
 
         int lastSeq = getLastSeq(packet.sack);
-        // TODO check duplicated ACK (using window) --> retransmit the lost pkts (reset
+        // if duplicated ACK (using window) --> retransmit the lost pkts (reset
         // timer), return
         if (senderStartPointer < senderWindow.size()) { // have to be with the window
             // tackle retransmit
@@ -205,7 +206,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
                     rtt += getTime() - senderWindow.get(senderStartPointer).getSendTime();
                     communicationTime += getTime() - senderWindow.get(senderStartPointer).getPrimarySendTime();
                     senderStartPointer++;
-                    System.out.println("\n|A|: increase senderStartPointer by 1\n");
+                    System.out.println("\n|A|: senderStartPointer =" + String.valueOf(senderStartPointer));
                 }
                 communicationTime += getTime() - senderWindow.get(senderStartPointer).getPrimarySendTime();
                 rtt += getTime() - senderWindow.get(senderStartPointer).getSendTime();
@@ -225,11 +226,12 @@ public class StudentNetworkSimulator extends NetworkSimulator {
                 if (senderWindow.size() > senderStartPointer) {
                     senderWindow.get(senderStartPointer).setSendTime(getTime());
                     Packet temp = senderWindow.get(senderStartPointer);
-                    temp.setChecksum(computeChecksum(temp.getSeqnum(), temp.getAcknum(), temp.getPayload()));
+                    temp.setChecksum(computeChecksum(temp));
                     toLayer3(A, temp);
                     System.out.println(
-                            "\n\n I am retransmitting a packet, because I received a ACK from B indicates lost/corrupted\n\n");
+                            "\n|aInput|: retransmitting a packet due to a ACK from B indicating lost/corrupted\n");
                     numTransmit++;
+                    numRetransmit++;
                     startTimer(A, RmtInterval);
                 }
 
@@ -243,11 +245,12 @@ public class StudentNetworkSimulator extends NetworkSimulator {
                             // if failed to find, this cur is a hole
                             Packet temp = senderWindow.get(i);
                             temp.setSendTime(getTime());
-                            temp.setChecksum(computeChecksum(temp.getSeqnum(), temp.getAcknum(), temp.getPayload()));
+                            temp.setChecksum(computeChecksum(temp));
                             toLayer3(A, senderWindow.get(i));
                             startTimer(A, RmtInterval);
                             System.out.println(
-                                    "\n\n I am retransmitting a packet, because I received a ACK from B indicates lost/corrupted\n\n");
+                                    "\n|aInput|: retransmitting a packet due to a ACK from B indicates lost/corrupted\n\n");
+                            numRetransmit++;
                             numTransmit++;
                         }
                     }
@@ -290,15 +293,16 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     // the retransmission of packets. See startTimer() and stopTimer(), above,
     // for how the timer is started and stopped.
     protected void aTimerInterrupt() {
-        // TODO retransmit the first oustanding pkt
+        // retransmit the first oustanding pkt
         if (senderWindow.size() > senderStartPointer) {
             Packet temp = senderWindow.get(senderStartPointer);
             temp.setSendTime(getTime());
-            temp.setChecksum(computeChecksum(temp.getSeqnum(), temp.getAcknum(), temp.getPayload()));
+            temp.setChecksum(computeChecksum(temp));
             toLayer3(A, temp);
             numTransmit++;
             System.out.println("\n|A|: retransmit a packet due to RTO\n");
-            // TODO start timer
+            // restart timer
+            stopTimer(A);
             startTimer(0, RmtInterval);
         }
     }
@@ -318,23 +322,29 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     // sent from the A-side.
     protected void bInput(Packet packet) {
         numReceived++; // successfully transmitted.
-        // check corruption --> drop, return
+        System.out.println("|bInput|: Get " + packet.getPayload());
+        // if corruption, return directly
         if (!validateChecksum(packet)) {
-            // sendACK();
+            System.out.println("|bInput|: Checksum error, corrupted");
+            numCorrupted++;
             return;
         }
+        // if duplicate, send ack
         if (checkDuplicate(packet)) {
             sendACK();
             return;
         }
 
-        // TODO check in-order delivery
-        // TODO expectSeqnum = (lastReceivedSeqnum + 1) % LimitSeqNo
-        // TODO If in-order: seq == expectSeqnum
+        // Tcheck in-order delivery: expectSeqnum = (lastReceivedSeqnum + 1) %
+        // LimitSeqNo
+        // If in-order: seq == expectSeqnum
         // TODO toLayer5()
         // TODO ACK, return
         int lastSeq = receiverBuffer.size() == 0 ? -1 : receiverBuffer.getLast().getSeqnum();
-        if ((lastSeq + 1) % LimitSeqNo == packet.getSeqnum()) { // if packet is exactly what we need now
+        int seqExpected = (lastSeq + 1) % LimitSeqNo;
+        if (seqExpected == packet.getSeqnum()) { // if packet is exactly what we need now
+            System.out.println("|bInput|: Correct seqnum. Expecting pkt " + String.valueOf(seqExpected) + ", got pkt"
+                    + packet.getSeqnum());
             receiverWindow.add(0, packet);
             while (!receiverWindow.isEmpty() && receiverWindow.getFirst().getSeqnum() == (lastSeq + 1) % LimitSeqNo) {
                 // if we have the next several packet needed as well, we put then to buffer
@@ -354,26 +364,26 @@ public class StudentNetworkSimulator extends NetworkSimulator {
                 }
                 receiverWindow.add(index, packet);
             }
-            // if (receiverWindow.isEmpty())
-            // receiverWindow.add(packet);
+            if (receiverWindow.isEmpty())
+                receiverWindow.add(packet);
 
-            // if (packet.getSeqnum() > lastSeq) { //
-            // for (int i = 0; i < receiverWindow.size(); i++) {
-            // if (receiverWindow.get(i).getSeqnum() > packet.getSeqnum()) {
-            // receiverWindow.add(i, packet);
-            // break;
-            // }
-            // }
-            // } else {
-            // for (int i = receiverWindow.size() - 1; i >= 0; i--) {
-            // int cur = receiverWindow.get(i).getSeqnum();
-            // if (cur > receiverBuffer.getLast().getSeqnum() || packet.getSeqnum() > cur) {
-            // receiverWindow.add(i + 1, packet);
-            // break;
-            // }
+            if (packet.getSeqnum() > lastSeq) { //
+                for (int i = 0; i < receiverWindow.size(); i++) {
+                    if (receiverWindow.get(i).getSeqnum() > packet.getSeqnum()) {
+                        receiverWindow.add(i, packet);
+                        break;
+                    }
+                }
+            } else {
+                for (int i = receiverWindow.size() - 1; i >= 0; i--) {
+                    int cur = receiverWindow.get(i).getSeqnum();
+                    if (cur > receiverBuffer.getLast().getSeqnum() || packet.getSeqnum() > cur) {
+                        receiverWindow.add(i + 1, packet);
+                        break;
+                    }
 
-            // }
-            // }
+                }
+            }
         }
         sendACK();
     }
@@ -387,7 +397,8 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             temp.sack[i] = receiverWindow.get(i).getSeqnum();
         }
         temp.setAcknum(1);
-        temp.setChecksum(computeChecksum(temp.getSeqnum(), temp.getAcknum(), temp.getPayload()));
+        // temp.setPayload("");
+        temp.setChecksum(computeChecksum(temp));
         toLayer3(1, temp);
         numTransmit++;
         numACK++;
@@ -429,7 +440,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         // NOT CHANGE THE FORMAT OF PRINTED OUTPUT
         System.out.println("\n\n===============STATISTICS=======================");
         System.out.println("Number of original packets transmitted by A:" + numPacket);
-        System.out.println("Number of retransmissions by A:" + (numTransmit - numPacket * 2));
+        System.out.println("Number of retransmissions by A:" + String.valueOf(numRetransmit));
         System.out.println("Number of data packets delivered to layer 5 at B:" + getToLayer5());
         System.out.println("Number of ACK packets sent by B:" + numACK);
         System.out.println("Number of corrupted packets:" + numCorrupted);
@@ -438,13 +449,12 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         System.out.println("Average RTT:" + rtt / getToLayer5());
         System.out.println("Average communication time:" + communicationTime / getToLayer5());
 
-        System.out.println("Throughput: " + getThoughtput());
-        System.out.println("Goodput: " + getGoodput());
-
         System.out.println("==================================================");
 
         // PRINT YOUR OWN STATISTIC HERE TO CHECK THE CORRECTNESS OF YOUR PROGRAM
         System.out.println("\nEXTRA:");
+        System.out.println("Throughput: " + getThoughtput());
+        System.out.println("Goodput: " + getGoodput());
         // EXAMPLE GIVEN BELOW
         // System.out.println("Example statistic you want to check e.g. number of ACK
         // packets received by A :" + "<YourVariableHere>");
