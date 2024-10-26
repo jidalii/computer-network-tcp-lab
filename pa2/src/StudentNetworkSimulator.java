@@ -665,6 +665,11 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         return false;
     }
 
+    protected void restartTimerA() {
+        stopTimer(A);
+        startTimer(A, RxmtInterval);
+    }
+
     // This routine will be called whenever the upper layer at the sender [A]
     // has a message to send. It is the job of your protocol to insure that
     // the data in such a message is delivered in-order, and correctly, to
@@ -675,9 +680,8 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         // if `swnd` not full, add packet to window
         if (swnd.size() < WindowSize) {
             swnd.add(newPack);
-            stopTimer(A);
-            startTimer(A, RxmtInterval);
             toLayer3(A, newPack);
+            restartTimerA();
             numSent++;
             sentTimes[seqNoA] = getTime();
             communicationTimes[seqNoA] = getTime();
@@ -731,8 +735,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             if (firstPacket != null) {
                 sentTimes[firstPacket.getSeqnum()] = -1;
                 toLayer3(A, firstPacket);
-                stopTimer(A);
-                startTimer(A, RxmtInterval);
+                restartTimerA();
                 numRetransmit++;
             }
         }
@@ -750,8 +753,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         if (swnd.isEmpty()) {
             stopTimer(A);
         } else {
-            stopTimer(A);
-            startTimer(A, RxmtInterval);
+            restartTimerA();
         }
     }
     
@@ -763,8 +765,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     protected void aTimerInterrupt() {
         System.out.println("|aTimerInterrupt|: timeout");
         toLayer3(A, swnd.peek());// resend the oldest one in the window
-        stopTimer(A);
-        startTimer(A, RxmtInterval);
+        restartTimerA();
         numRetransmit++;
         sentTimes[swnd.peek().getSeqnum()] = -1;
     }
