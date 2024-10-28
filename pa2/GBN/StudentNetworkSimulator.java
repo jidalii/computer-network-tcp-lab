@@ -572,11 +572,11 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     // these variables to send messages error free! They can only hold
     // state information for A or B.
     // Also add any necessary methods (e.g. checksum of a String)
-    private int seqNoA;
+    private int seqNumA;
     private int ackNoA = 0;
-    private int lastSeq;// last seq received by layer5 on receiver side
-    private int expecting = 0;// next expecting seq of B side
-    // array to track each pack sent time for selective
+    private int lastSeq;// last seq received by layer5 on B
+    private int expecting = 0;// next expecting seq of B
+
     private Queue<Packet> sendBuffer;// sender sendBuffer to store out-of-window packets
     private Queue<Packet> swnd;// used to keep track of packets in the sender window
     private Map<Integer, Packet> rcvBuffer;
@@ -595,6 +595,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     private int RTTCount = 0;
 
     private double totalCommunicationTime = 0.0;
+    private int communicationCount = 0;
 
     private double[] sentTimes;
     private double[] communicationTimes;
@@ -619,7 +620,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     // *.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*//
 
     protected Packet buildPacketA(Message m) {
-        Packet p = new Packet(seqNoA, ackNoA, -1, m.getData());
+        Packet p = new Packet(seqNumA, ackNoA, -1, m.getData());
         p.setChecksum(computeChecksum(p));
         return p;
     }
@@ -642,11 +643,11 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     }
 
     protected void increaseSeqNumAByOne() {
-        seqNoA = (seqNoA + 1) % LimitSeqNo;
+        seqNumA = (seqNumA + 1) % LimitSeqNo;
     }
 
-    // Check if ack is within rwnd
-    // if not, duplicated ack
+    // Check if seq is within rwnd
+    // if not, duplicated seq
     protected boolean inWindowB(int index) {
         int windowEnd = (expecting + WindowSize - 1) % LimitSeqNo;
         if (expecting <= windowEnd) { // if not wrap-around
@@ -675,20 +676,19 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     // the data in such a message is delivered in-order, and correctly, to
     // the receiving upper layer.
     protected void aOutput(Message message) {
-        Packet newPack = buildPacketA(message);
+        Packet p = buildPacketA(message);
 
         // if `swnd` not full, add packet to window
         if (swnd.size() < WindowSize) {
-            swnd.add(newPack);
-            toLayer3(A, newPack);
+            swnd.add(p);
+            toLayer3(A, p);
             restartTimerA();
             numSent++;
-            sentTimes[seqNoA] = getTime();
-            communicationTimes[seqNoA] = getTime();
+            sentTimes[seqNumA] = getTime();
+            communicationTimes[seqNumA] = getTime();
         } else {
-            sendBuffer.add(newPack);
+            sendBuffer.add(p);
         }
-
         increaseSeqNumAByOne();
     }
 
@@ -700,46 +700,52 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         System.out.println(
                 "|aInput|: Get ACK from B, packet is: seqnum:" + packet.getSeqnum() + ", ack:" + packet.getAcknum()
                         + ", checksum:" + packet.getAcknum() + ", payload:" + packet.getPayload());
-    
+
         // if no packets in swnd, skip
-        if (swnd.isEmpty()) return;
-    
+        if (swnd.isEmpty())
+            return;
+
         // if corruption, skip
         if (!validateChecksum(packet)) {
             System.out.println(
-                "|aInput|: Got corrupted packet");
+                    "|aInput|: Got corrupted packet");
             numCorrupted++;
             return;
         }
-    
+
         int seq = packet.getSeqnum();
-    
-        if (inWindowA(seq)) {  // if acked packet in `swnd`
+
+        if (inWindowA(seq)) { // if acked packet in `swnd`
             int num;
             // move window up to acked packet
             do {
                 Packet removedPacket = swnd.poll();
                 num = removedPacket.getSeqnum();
-    
-                // Calculate RTT for ack packet
+
+                // calculate RTT for ack packet
                 if (num == seq && sentTimes[num] != -1) {
                     totalRTT += getTime() - sentTimes[num];
                     RTTCount++;
                 }
                 sentTimes[num] = -1;
                 totalCommunicationTime += getTime() - communicationTimes[num];
+                communicationCount++;
             } while (num != seq);
-        } else {  // handle duplicate ack
+        } else { // handle duplicate ack
             // retransmit 1st uack packet
             Packet firstPacket = swnd.peek();
             if (firstPacket != null) {
+                System.out.println(
+                        "|aInput|: Got duplicated ACK, retransmit the first packet in the window, seq:"
+                                + String.valueOf(firstPacket.getSeqnum()) + ", ack:"
+                                + String.valueOf(firstPacket.getAcknum()));
                 sentTimes[firstPacket.getSeqnum()] = -1;
                 toLayer3(A, firstPacket);
                 restartTimerA();
                 numRetransmit++;
             }
         }
-    
+
         // Move packets from the send buffer to the window, if space is available
         while (swnd.size() < WindowSize && !sendBuffer.isEmpty()) {
             Packet p = sendBuffer.poll();
@@ -748,7 +754,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             sentTimes[p.getSeqnum()] = getTime();
             numSent++;
         }
-    
+
         // Adjust the timer based on whether the window is empty
         if (swnd.isEmpty()) {
             stopTimer(A);
@@ -756,7 +762,6 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             restartTimerA();
         }
     }
-    
 
     // This routine will be called when A's timer expires (thus generating a
     // timer interrupt). You'll probably want to use this routine to control
@@ -764,7 +769,8 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     // for how the timer is started and stopped.
     protected void aTimerInterrupt() {
         System.out.println("|aTimerInterrupt|: timeout");
-        toLayer3(A, swnd.peek());// resend the oldest one in the window
+        System.out.println("|aTimerInterrupt|: retransmit the first packet in swnd due to RTO");
+        toLayer3(A, swnd.peek());// resend the first one in the window
         restartTimerA();
         numRetransmit++;
         sentTimes[swnd.peek().getSeqnum()] = -1;
@@ -775,10 +781,10 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     // initialization (e.g. of member variables you add to control the state
     // of entity A).
     protected void aInit() {
-        seqNoA = FirstSeqNo;
+        seqNumA = FirstSeqNo;
         sendBuffer = new LinkedList<Packet>();
         swnd = new LinkedList<Packet>();
-        sentTimes = new double[LimitSeqNo];// used to track totalRTT for each packet
+        sentTimes = new double[LimitSeqNo];
         Arrays.fill(sentTimes, -1);
         communicationTimes = new double[LimitSeqNo];
         Arrays.fill(communicationTimes, -1);
@@ -795,7 +801,6 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     // sent from the A-side.
     protected void bInput(Packet packet) {
         System.out.println("|bInput|: Get " + packet.getPayload());
-        int seq = packet.getSeqnum();
 
         // if corrupted (checksum), do nothing
         if (!validateChecksum(packet)) {
@@ -803,17 +808,18 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             numCorrupted++;
             return;
         }
+
         // if duplicated, drop and re-ack
-        else if (!inWindowB(seq)) {
+        int seq = packet.getSeqnum();
+        if (!inWindowB(seq)) {
             System.out.println("|bInput|: Got duplicated packet");
             sendAckB();
             numAck++;
             return;
         }
-        // if new, add to rcv buffer
-        else {
-            rcvBuffer.put(packet.getSeqnum(), packet);
-        }
+
+        // add to rcv buffer
+        rcvBuffer.put(packet.getSeqnum(), packet);
 
         // check whether the buffer is in order
         // if true, dump every ordered packet to layer 5
@@ -831,6 +837,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         }
         // otherwise ack last received packet sequence
         else {
+            System.out.println("|bInput|: Expecting pkt"+ expecting + ", got pkt" + seq);
             sendAckB();
             numAck++;
         }
@@ -867,7 +874,8 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         System.out.println("\nEXTRA:");
         System.out.println("All RTT:" + totalRTT);
         System.out.println("Counter RTT:" + RTTCount);
-        System.out.println("Total time to communicate::" + totalCommunicationTime);
+        System.out.println("Total time to communicate:" + totalCommunicationTime);
+        System.out.println("Counter for time to communicate:" + communicationCount);
         // EXAMPLE GIVEN BELOW
         // System.out.println("Example statistic you want to check e.g. number of ACK
         // packets received by A :" + "<YourVariableHere>");
