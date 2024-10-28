@@ -1,0 +1,48 @@
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 144, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 69, in main
+    client.connect()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 22, in connect
+    self.socket.connect(self.server_addr)
+ConnectionRefusedError: [Errno 61] Connection refused
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 144, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 69, in main
+    client.connect()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 22, in connect
+    self.socket.connect(self.server_addr)
+ConnectionRefusedError: [Errno 61] Connection refused
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 144, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 69, in main
+    client.connect()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 22, in connect
+    self.socket.connect(self.server_addr)
+ConnectionRefusedError: [Errno 61] Connection refused
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 144, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 69, in main
+    client.connect()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 22, in connect
+    self.socket.connect(self.server_addr)
+ConnectionRefusedError: [Errno 61] Connection refused
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 144, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 69, in main
+    client.connect()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 22, in connect
+    self.socket.connect(self.server_addr)
+ConnectionRefusedError: [Errno 61] Connection refused
+Traceback (most recent call last):
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 144, in <module>
+    main()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 69, in main
+    client.connect()
+  File "/Users/jidali/bu/cs655/pa/pa1/pa1part2/client.py", line 22, in connect
+    self.socket.connect(self.server_addr)
+ConnectionRefusedError: [Errno 61] Connection refused
