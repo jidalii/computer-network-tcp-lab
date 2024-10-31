@@ -98,7 +98,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     // state information for A or B.
     // Also add any necessary methods (e.g. checksum of a String)
     private int seqNumA;
-    private int ackNoA = 0;
+    // private int ackNoA = 0;
     private int lastSeq;// last seq received by layer5 on B
     private int expecting = 0;// next expecting seq of B
 
@@ -145,7 +145,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     // *.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*//
 
     protected Packet buildPacketA(Message m) {
-        Packet p = new Packet(seqNumA, ackNoA, -1, m.getData());
+        Packet p = new Packet(seqNumA, 0, -1, m.getData());
         p.setChecksum(computeChecksum(p));
         return p;
     }
@@ -217,7 +217,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         increaseSeqNumAByOne();
     }
 
-    // Move the window up to a specific acknowledged packet sequence
+    // move the window up to a specific acknowledged packet sequence
     private void moveWindowTo(int seq) {
         int num;
         // move window up to acked packet
@@ -242,19 +242,20 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         if (firstPacket != null) {
             System.out.printf("|aInput|: Got duplicated ACK, retransmit first packet in the window, seq:%d, ack:%d%n",
                     firstPacket.getSeqnum(), firstPacket.getAcknum());
-            sentTimes[firstPacket.getSeqnum()] = -1;
+            sentTimes[firstPacket.getSeqnum()] = getTime();
             toLayer3(A, firstPacket);
             restartTimerA();
             numRetransmit++;
         }
     }
 
-    // Move packets from send buffer to swnd, if swnd is not full
+    // move packets from send buffer to swnd, if swnd is not full
     private void addPacketsToWindow() {
         while (swnd.size() < WindowSize && !sendBuffer.isEmpty()) {
             Packet p = sendBuffer.poll();
             swnd.add(p);
             toLayer3(A, p);
+            restartTimerA();
             sentTimes[p.getSeqnum()] = getTime();
             numSent++;
         }
@@ -270,8 +271,10 @@ public class StudentNetworkSimulator extends NetworkSimulator {
                         + ", checksum:" + packet.getAcknum() + ", payload:" + packet.getPayload());
 
         // if no packets in swnd, skip
-        if (swnd.isEmpty())
+        if (swnd.isEmpty()) {
+            stopTimer(A);
             return;
+        }
 
         // if corruption, skip
         if (!validateChecksum(packet)) {
@@ -294,9 +297,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         // If empty swnd, stop A's timer
         if (swnd.isEmpty()) {
             stopTimer(A);
-        } else {
-            restartTimerA();
-        }
+        } 
     }
 
     // This routine will be called when A's timer expires (thus generating a
