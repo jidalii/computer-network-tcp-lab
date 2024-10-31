@@ -4,7 +4,6 @@ import http_resp
 import time
 from signal import signal, SIGPIPE, SIG_DFL   
 
-
 class TCPServer:
     def __init__(self) -> None:
         self.measure_type = ""
@@ -44,6 +43,7 @@ class TCPServer:
             return False
 
     def validate_client_probe_msg(self, msg: str, seq_num: int) -> bool:
+        print("SERVER: received msg:", msg)
         if msg[-1] != '\n':
             return False
         msg = msg.strip()
