@@ -284,9 +284,10 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             addPacketsToWindow();
             if (swnd.isEmpty()) {
                 stopTimer(A);
-            } else {
-                restartTimerA();
-            }
+            } 
+            // else {
+            //     restartTimerA();
+            // }
         } else {
             handleDuplicateAck();  // Handle duplicate ACK scenario
         }
@@ -304,6 +305,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             toLayer3(A, p);
             numRetransmit++;
             sentTimes[p.getSeqnum()] = getTime();
+            break;
         }
         restartTimerA();  // Restart the timer for the retransmission
     }
@@ -400,7 +402,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         System.out.println("\n\n===============STATISTICS=======================");
         System.out.println("Number of original packets transmitted by A:" + numSent);
         System.out.println("Number of retransmissions by A:" + numRetransmit);
-        System.out.println("Number of data packets delivered to layer 5 at B:" + layer5B);
+        System.out.println("Number of data packets delivered to layer 5 at B:" + numLayer5B);
         System.out.println("Number of ACK packets sent by B:" + numAck);
         System.out.println("Number of corrupted packets:" + numCorrupted);
         System.out.println("Ratio of lost packets:"
