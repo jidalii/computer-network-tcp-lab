@@ -1,5 +1,4 @@
 
-
 import java.util.*;
 import java.io.*;
 
@@ -253,10 +252,13 @@ public class StudentNetworkSimulator extends NetworkSimulator {
                 if (num == seq && sentTimes[num] != -1) {
                     totalRTT += getTime() - sentTimes[num];
                     RTTCount++;
+                    sentTimes[num] = -1;
                 }
-                sentTimes[num] = -1;
-                totalCommunicationTime += getTime() - communicationTimes[num];
-                communicationCount++;
+                if (num == seq && communicationTimes[num] != -1) {
+                    totalCommunicationTime += getTime() - communicationTimes[num];
+                    communicationCount++;
+                }
+
             } while (num != seq);
         } else { // handle duplicate ack
             // retransmit 1st uack packet
@@ -266,7 +268,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
                         "|aInput|: Got duplicated ACK, retransmit the first packet in the window, seq:"
                                 + String.valueOf(firstPacket.getSeqnum()) + ", ack:"
                                 + String.valueOf(firstPacket.getAcknum()));
-                sentTimes[firstPacket.getSeqnum()] = getTime();  // not -1, update the timestamp
+                sentTimes[firstPacket.getSeqnum()] = getTime(); // not -1, update the timestamp
                 toLayer3(A, firstPacket);
                 restartTimerA();
                 numRetransmit++;
@@ -278,8 +280,8 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             Packet p = sendBuffer.poll();
             swnd.add(p);
             toLayer3(A, p);
-            sentTimes[p.getSeqnum()] = getTime();
             restartTimerA();
+            sentTimes[p.getSeqnum()] = -1;
             // restart timer only when sending out packet
             numSent++;
         }
@@ -287,7 +289,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         // Adjust the timer based on whether the window is empty
         if (swnd.isEmpty()) {
             stopTimer(A);
-        } 
+        }
     }
 
     // This routine will be called when A's timer expires (thus generating a
@@ -364,7 +366,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         }
         // otherwise ack last received packet sequence
         else {
-            System.out.println("|bInput|: Expecting pkt"+ expecting + ", got pkt" + seq);
+            System.out.println("|bInput|: Expecting pkt" + expecting + ", got pkt" + seq);
             sendAckB();
             numAck++;
         }
@@ -394,7 +396,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         System.out.println("Ratio of corrupted packets:"
                 + (double) ((double) numCorrupted / (numSent + numCorrupted + numAck)));
         System.out.println("Average RTT:" + totalRTT / RTTCount);
-        System.out.println("Average communication time:" + totalCommunicationTime / numSent);
+        System.out.println("Average communication time:" + totalCommunicationTime / communicationCount);
         System.out.println("==================================================");
 
         // PRINT YOUR OWN STATISTIC HERE TO CHECK THE CORRECTNESS OF YOUR PROGRAM

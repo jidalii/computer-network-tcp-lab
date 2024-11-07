@@ -313,8 +313,8 @@ public class StudentNetworkSimulator extends NetworkSimulator {
                         "|aInput|: Got duplicated ACK, retransmit the first packet in the window, seq:"
                                 + String.valueOf(firstPacket.getSeqnum()) + ", ack:"
                                 + String.valueOf(firstPacket.getAcknum()));
-                sentTimes[firstPacket.getSeqnum()] = getTime(); // not -1, update the timestamp
-                communicationTimes[firstPacket.getSeqnum()] = getTime(); // not -1, update the timestamp
+                sentTimes[firstPacket.getSeqnum()] = getTime();
+                communicationTimes[firstPacket.getSeqnum()] = getTime();
                 toLayer3(A, firstPacket);
                 restartTimerA();
                 numRetransmit++;
@@ -327,9 +327,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             swnd.add(p);
             toLayer3(A, p);
             sentTimes[p.getSeqnum()] = getTime();
-            // communicationTimes[p.getSeqnum()] = getTime();
             restartTimerA();
-            // restart timer only when sending out packet
             numSent++;
         }
 
@@ -451,7 +449,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         System.out.println("Ratio of corrupted packets:"
                 + (double) ((double) numCorrupted / (numSent + numCorrupted + numAck)));
         System.out.println("Average RTT:" + totalRTT / RTTCount);
-        System.out.println("Average communication time:" + totalCommunicationTime / numSent);
+        System.out.println("Average communication time:" + totalCommunicationTime / communicationCount);
         System.out.println("==================================================");
 
         // PRINT YOUR OWN STATISTIC HERE TO CHECK THE CORRECTNESS OF YOUR PROGRAM
