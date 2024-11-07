@@ -1,5 +1,4 @@
 
-
 import java.util.*;
 import java.io.*;
 
@@ -117,7 +116,6 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     private int numRetransmit = 0;
     private int numAck = 0;
     private int numCorrupted = 0;
-    private int layer5B = 0;
     private int numLayer5B = 0;
     private double totalRTT = 0.0;
     private int RTTCount = 0;
@@ -139,7 +137,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             double delay) {
         super(numMessages, loss, corrupt, avgDelay, trace, seed);
         WindowSize = winsize;
-        LimitSeqNo = winsize *2; // set appropriately; assumes SR here!
+        LimitSeqNo = winsize * 2; // set appropriately; assumes SR here!
         RxmtInterval = delay;
     }
 
@@ -173,6 +171,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     protected void increaseSeqNumAByOne() {
         seqNumA = (seqNumA + 1) % LimitSeqNo;
     }
+
     private void moveWindowTo(int seq) {
         int num;
         // move window up to acked packet
@@ -190,6 +189,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             communicationCount++;
         } while (num != seq);
     }
+
     private void handleDuplicateAck() {
         Packet firstPacket = swnd.peek();
         if (firstPacket != null) {
@@ -201,6 +201,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             numRetransmit++;
         }
     }
+
     private void addPacketsToWindow() {
         while (swnd.size() < WindowSize && !sendBuffer.isEmpty()) {
             Packet p = sendBuffer.poll();
@@ -211,6 +212,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             numSent++;
         }
     }
+
     // Check if seq is within rwnd
     // if not, duplicated seq
     protected boolean inWindowB(int index) {
@@ -268,7 +270,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
 
         // if no packets in swnd, skip
         // if (swnd.isEmpty())
-        //     return;
+        // return;
 
         // if corruption, skip
         if (!validateChecksum(packet)) {
@@ -291,10 +293,17 @@ public class StudentNetworkSimulator extends NetworkSimulator {
                 if (num == seq && sentTimes[num] != -1) {
                     totalRTT += getTime() - sentTimes[num];
                     RTTCount++;
+                    uniqueSet.add(num);
+                    sentTimes[num] = -1;
                 }
-                sentTimes[num] = -1;
-                totalCommunicationTime += getTime() - communicationTimes[num];
-                communicationCount++;
+
+                // if (num == seq && communicationTimes[num] != -1) {
+                if (num == seq) {
+                    totalCommunicationTime += getTime() - communicationTimes[num];
+                    communicationCount++;
+                    // communicationTimes[num] = -1;
+                }
+
             } while (num != seq);
         } else { // handle duplicate ack
             // retransmit 1st uack packet
@@ -304,7 +313,8 @@ public class StudentNetworkSimulator extends NetworkSimulator {
                         "|aInput|: Got duplicated ACK, retransmit the first packet in the window, seq:"
                                 + String.valueOf(firstPacket.getSeqnum()) + ", ack:"
                                 + String.valueOf(firstPacket.getAcknum()));
-                sentTimes[firstPacket.getSeqnum()] = getTime();  // not -1, update the timestamp
+                sentTimes[firstPacket.getSeqnum()] = getTime(); // not -1, update the timestamp
+                communicationTimes[firstPacket.getSeqnum()] = getTime(); // not -1, update the timestamp
                 toLayer3(A, firstPacket);
                 restartTimerA();
                 numRetransmit++;
@@ -317,6 +327,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             swnd.add(p);
             toLayer3(A, p);
             sentTimes[p.getSeqnum()] = getTime();
+            // communicationTimes[p.getSeqnum()] = getTime();
             restartTimerA();
             // restart timer only when sending out packet
             numSent++;
@@ -325,9 +336,8 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         // Adjust the timer based on whether the window is empty
         if (swnd.isEmpty()) {
             stopTimer(A);
-        } 
+        }
     }
-
 
     // This routine will be called when A's timer expires (thus generating a
     // timer interrupt). You'll probably want to use this routine to control
@@ -336,15 +346,12 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     protected void aTimerInterrupt() {
         System.out.println("|aTimerInterrupt|: Timer expired, retransmitting window");
 
-        for (Packet p : swnd) {
-            toLayer3(A, p);
-            numRetransmit++;
-            sentTimes[p.getSeqnum()] = getTime();
-            break;
-        }
-        restartTimerA();  // Restart the timer for the retransmission
+        Packet firstPacket = swnd.peek();
+        toLayer3(A, firstPacket);
+        numRetransmit++;
+        sentTimes[firstPacket.getSeqnum()] = -1;
+        restartTimerA(); // Restart the timer for the retransmission
     }
-
 
     // This routine will be called once, before any of your other A-side
     // routines are called. It can be used to do any required
@@ -383,7 +390,8 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             // Add to receive buffer if in the window
             rcvBuffer.put(seq, packet);
 
-            // If packet is the expected one, deliver it and check for further in-order packets
+            // If packet is the expected one, deliver it and check for further in-order
+            // packets
             if (seq == expecting) {
                 while (rcvBuffer.containsKey(expecting)) {
                     Packet p = rcvBuffer.remove(expecting);
@@ -396,7 +404,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
 
             // Create the SACK array to indicate received out-of-order packets
             int[] sackArray = new int[5];
-            Arrays.fill(sackArray, 1000);  // Using 1000 as a placeholder for unused slots
+            Arrays.fill(sackArray, 1000); // Using 1000 as a placeholder for unused slots
             int index = 0;
 
             for (int i = 0; i < LimitSeqNo && index < 5; i++) {
@@ -417,9 +425,6 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             numAck++;
         }
     }
-
-
-
 
     // This routine will be called once, before any of your other B-side
     // routines are called. It can be used to do any required
