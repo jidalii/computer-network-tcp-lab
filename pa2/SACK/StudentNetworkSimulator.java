@@ -107,6 +107,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     private Queue<Packet> sendBuffer;// sender sendBuffer to store out-of-window packets
     private Queue<Packet> swnd;// used to keep track of packets in the sender window
     private Map<Integer, Packet> rcvBuffer;
+    private HashSet<Integer> uniqueSet;
 
     // *´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*//
     // * DATA ANALYSIS VARIABLES *//
@@ -138,7 +139,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             double delay) {
         super(numMessages, loss, corrupt, avgDelay, trace, seed);
         WindowSize = winsize;
-        LimitSeqNo = winsize * 2; // set appropriately; assumes SR here!
+        LimitSeqNo = winsize *2; // set appropriately; assumes SR here!
         RxmtInterval = delay;
     }
 
@@ -261,36 +262,70 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     // arrives at the A-side. "packet" is the (possibly corrupted) packet
     // sent from the B-side.
     protected void aInput(Packet packet) {
-        System.out.println("|aInput|: Received ACK for seqnum: " + packet.getSeqnum());
+        System.out.println(
+                "|aInput|: Get ACK from B, packet is: seqnum:" + packet.getSeqnum() + ", ack:" + packet.getAcknum()
+                        + ", checksum:" + packet.getAcknum() + ", payload:" + packet.getPayload());
 
+        // if no packets in swnd, skip
+        // if (swnd.isEmpty())
+        //     return;
+
+        // if corruption, skip
         if (!validateChecksum(packet)) {
-            System.out.println("|aInput|: ACK packet corrupted");
+            System.out.println(
+                    "|aInput|: Got corrupted packet");
             numCorrupted++;
             return;
         }
 
-        int ackSeq = packet.getSeqnum();
-        if (inWindowA(ackSeq)) {
-            moveWindowTo(ackSeq);  // Slide the window up to the acknowledged packet
+        int seq = packet.getSeqnum();
 
-            // Process SACK array and remove acknowledged packets from the window
-            for (int sackSeq : packet.sack) {
-                if (sackSeq != 1000 && inWindowA(sackSeq)) {
-                    swnd.removeIf(p -> p.getSeqnum() == sackSeq);
+        if (inWindowA(seq)) { // if acked packet in `swnd`
+            int num;
+            // move window up to acked packet
+            do {
+                Packet removedPacket = swnd.poll();
+                num = removedPacket.getSeqnum();
+
+                // calculate RTT for ack packet
+                if (num == seq && sentTimes[num] != -1) {
+                    totalRTT += getTime() - sentTimes[num];
+                    RTTCount++;
                 }
+                sentTimes[num] = -1;
+                totalCommunicationTime += getTime() - communicationTimes[num];
+                communicationCount++;
+            } while (num != seq);
+        } else { // handle duplicate ack
+            // retransmit 1st uack packet
+            Packet firstPacket = swnd.peek();
+            if (firstPacket != null) {
+                System.out.println(
+                        "|aInput|: Got duplicated ACK, retransmit the first packet in the window, seq:"
+                                + String.valueOf(firstPacket.getSeqnum()) + ", ack:"
+                                + String.valueOf(firstPacket.getAcknum()));
+                sentTimes[firstPacket.getSeqnum()] = getTime();  // not -1, update the timestamp
+                toLayer3(A, firstPacket);
+                restartTimerA();
+                numRetransmit++;
             }
-
-            // Add new packets to the window if space is available
-            addPacketsToWindow();
-            if (swnd.isEmpty()) {
-                stopTimer(A);
-            } 
-            // else {
-            //     restartTimerA();
-            // }
-        } else {
-            handleDuplicateAck();  // Handle duplicate ACK scenario
         }
+
+        // Move packets from the send buffer to the window, if space is available
+        while (swnd.size() < WindowSize && !sendBuffer.isEmpty()) {
+            Packet p = sendBuffer.poll();
+            swnd.add(p);
+            toLayer3(A, p);
+            sentTimes[p.getSeqnum()] = getTime();
+            restartTimerA();
+            // restart timer only when sending out packet
+            numSent++;
+        }
+
+        // Adjust the timer based on whether the window is empty
+        if (swnd.isEmpty()) {
+            stopTimer(A);
+        } 
     }
 
 
@@ -393,6 +428,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     protected void bInit() {
         rcvBuffer = new HashMap<>();
         lastSeq = -1;
+        uniqueSet = new HashSet<>();
     }
 
     // Use to print final statistics
