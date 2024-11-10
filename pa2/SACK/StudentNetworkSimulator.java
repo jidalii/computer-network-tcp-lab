@@ -259,6 +259,31 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         increaseSeqNumAByOne();
     }
 
+    private boolean isSeqnumInSack(int seqnum, int[] sack) {
+        for (int i=0; i<sack.length; i++) {
+            if (seqnum == sack[i]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected void transmitAllMissingPacketsOfSwndInSack(int[] sack) {
+        for (Packet p : swnd) {
+            if (!isSeqnumInSack(p.getSeqnum(), sack)) {
+                System.out.println(
+                        "|aInput|: Got duplicated ACK, retransmit the first packet in the window, seq:"
+                                + String.valueOf(p.getSeqnum()) + ", ack:"
+                                + String.valueOf(p.getAcknum()));
+                sentTimes[p.getSeqnum()] = getTime();
+                communicationTimes[p.getSeqnum()] = getTime();
+                toLayer3(A, p);
+                restartTimerA();
+                numRetransmit++;
+            }
+        }
+    }
+
     // This routine will be called whenever a packet sent from the B-side
     // (i.e. as a result of a toLayer3() being done by a B-side procedure)
     // arrives at the A-side. "packet" is the (possibly corrupted) packet
@@ -307,18 +332,19 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             } while (num != seq);
         } else { // handle duplicate ack
             // retransmit 1st uack packet
-            Packet firstPacket = swnd.peek();
-            if (firstPacket != null) {
-                System.out.println(
-                        "|aInput|: Got duplicated ACK, retransmit the first packet in the window, seq:"
-                                + String.valueOf(firstPacket.getSeqnum()) + ", ack:"
-                                + String.valueOf(firstPacket.getAcknum()));
-                sentTimes[firstPacket.getSeqnum()] = getTime();
-                communicationTimes[firstPacket.getSeqnum()] = getTime();
-                toLayer3(A, firstPacket);
-                restartTimerA();
-                numRetransmit++;
-            }
+            transmitAllMissingPacketsOfSwndInSack(packet.sack);
+            // Packet firstPacket = swnd.peek();
+            // if (firstPacket != null) {
+            //     System.out.println(
+            //             "|aInput|: Got duplicated ACK, retransmit the first packet in the window, seq:"
+            //                     + String.valueOf(firstPacket.getSeqnum()) + ", ack:"
+            //                     + String.valueOf(firstPacket.getAcknum()));
+            //     sentTimes[firstPacket.getSeqnum()] = getTime();
+            //     communicationTimes[firstPacket.getSeqnum()] = getTime();
+            //     toLayer3(A, firstPacket);
+            //     restartTimerA();
+            //     numRetransmit++;
+            // }
         }
 
         // Move packets from the send buffer to the window, if space is available
