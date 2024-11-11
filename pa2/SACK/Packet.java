@@ -24,6 +24,7 @@ public class Packet
             acknum = p.getAcknum();
             checksum = p.getChecksum();
             payload = new String(p.getPayload());
+            sack = p.sack;
         }
     }
 
@@ -52,6 +53,15 @@ public class Packet
         acknum = ack;
         checksum = check;
         payload = "";
+    }
+
+    public Packet(int seq, int ack, int check, String newPayload, int[] _sack)
+    {
+        seqnum = seq;
+        acknum = ack;
+        checksum = check;
+        payload = "";
+        sack = _sack;
     }
 
 

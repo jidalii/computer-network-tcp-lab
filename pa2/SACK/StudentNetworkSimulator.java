@@ -172,47 +172,6 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         seqNumA = (seqNumA + 1) % LimitSeqNo;
     }
 
-    private void moveWindowTo(int seq) {
-        int num;
-        // move window up to acked packet
-        do {
-            Packet removedPacket = swnd.poll();
-            num = removedPacket.getSeqnum();
-
-            // calculate RTT for ack packet
-            if (num == seq && sentTimes[num] != -1) {
-                totalRTT += getTime() - sentTimes[num];
-                RTTCount++;
-            }
-            sentTimes[num] = -1;
-            totalCommunicationTime += getTime() - communicationTimes[num];
-            communicationCount++;
-        } while (num != seq);
-    }
-
-    private void handleDuplicateAck() {
-        Packet firstPacket = swnd.peek();
-        if (firstPacket != null) {
-            System.out.printf("|aInput|: Got duplicated ACK, retransmit first packet in the window, seq:%d, ack:%d%n",
-                    firstPacket.getSeqnum(), firstPacket.getAcknum());
-            sentTimes[firstPacket.getSeqnum()] = getTime();
-            toLayer3(A, firstPacket);
-            restartTimerA();
-            numRetransmit++;
-        }
-    }
-
-    private void addPacketsToWindow() {
-        while (swnd.size() < WindowSize && !sendBuffer.isEmpty()) {
-            Packet p = sendBuffer.poll();
-            swnd.add(p);
-            toLayer3(A, p);
-            restartTimerA();
-            sentTimes[p.getSeqnum()] = getTime();
-            numSent++;
-        }
-    }
-
     // Check if seq is within rwnd
     // if not, duplicated seq
     protected boolean inWindowB(int index) {
@@ -268,18 +227,19 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         return false;
     }
 
-    protected void transmitAllMissingPacketsOfSwndInSack(int[] sack) {
+    protected void transmitAllMissingPacketsOfSwndInSack(int[] sack, int seq) {
         for (Packet p : swnd) {
-            if (!isSeqnumInSack(p.getSeqnum(), sack)) {
+            if (!isSeqnumInSack(p.getSeqnum(), sack) && seq != p.getSeqnum()) {
                 System.out.println(
-                        "|aInput|: Got duplicated ACK, retransmit the first packet in the window, seq:"
+                        "|aInput|: Retransmit packet not in sack, seq:"
                                 + String.valueOf(p.getSeqnum()) + ", ack:"
                                 + String.valueOf(p.getAcknum()));
-                sentTimes[p.getSeqnum()] = getTime();
-                communicationTimes[p.getSeqnum()] = getTime();
+                // sentTimes[p.getSeqnum()] = -1;
+                // communicationTimes[p.getSeqnum()] = getTime();
                 toLayer3(A, p);
                 restartTimerA();
                 numRetransmit++;
+                // break;
             }
         }
     }
@@ -306,6 +266,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
         }
 
         int seq = packet.getSeqnum();
+        System.out.println("SACK:" + Arrays.toString(packet.sack));
 
         if (inWindowA(seq)) { // if acked packet in `swnd`
             int num;
@@ -318,7 +279,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
                 if (num == seq && sentTimes[num] != -1) {
                     totalRTT += getTime() - sentTimes[num];
                     RTTCount++;
-                    uniqueSet.add(num);
+                    // uniqueSet.add(num);
                     sentTimes[num] = -1;
                 }
 
@@ -332,19 +293,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             } while (num != seq);
         } else { // handle duplicate ack
             // retransmit 1st uack packet
-            transmitAllMissingPacketsOfSwndInSack(packet.sack);
-            // Packet firstPacket = swnd.peek();
-            // if (firstPacket != null) {
-            //     System.out.println(
-            //             "|aInput|: Got duplicated ACK, retransmit the first packet in the window, seq:"
-            //                     + String.valueOf(firstPacket.getSeqnum()) + ", ack:"
-            //                     + String.valueOf(firstPacket.getAcknum()));
-            //     sentTimes[firstPacket.getSeqnum()] = getTime();
-            //     communicationTimes[firstPacket.getSeqnum()] = getTime();
-            //     toLayer3(A, firstPacket);
-            //     restartTimerA();
-            //     numRetransmit++;
-            // }
+            transmitAllMissingPacketsOfSwndInSack(packet.sack, seq);
         }
 
         // Move packets from the send buffer to the window, if space is available
@@ -352,8 +301,8 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             Packet p = sendBuffer.poll();
             swnd.add(p);
             toLayer3(A, p);
-            sentTimes[p.getSeqnum()] = getTime();
             restartTimerA();
+            sentTimes[p.getSeqnum()] = getTime();
             numSent++;
         }
 
@@ -372,9 +321,10 @@ public class StudentNetworkSimulator extends NetworkSimulator {
 
         Packet firstPacket = swnd.peek();
         toLayer3(A, firstPacket);
+        restartTimerA(); // Restart the timer for the retransmission
         numRetransmit++;
         sentTimes[firstPacket.getSeqnum()] = -1;
-        restartTimerA(); // Restart the timer for the retransmission
+        // communicationTimes[firstPacket.getSeqnum()] = getTime();
     }
 
     // This routine will be called once, before any of your other A-side
@@ -439,8 +389,12 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             }
 
             // Send ACK with SACK array
-            Packet ackPacket = new Packet(lastSeq, 1, computeChecksum(new Packet(lastSeq, 1, -1, "")));
-            ackPacket.sack = sackArray;
+            Packet ackPacket = new Packet(lastSeq, 1, -1, "", sackArray);
+            // ackPacket.sack = sackArray;
+            ackPacket.setChecksum(computeChecksum(ackPacket));
+            System.out.println("B sends SACK:" + Arrays.toString(ackPacket.sack));
+            // printArray(ackPacket.sack);
+            // System.out.println("SACK:" + ackPacket.sack.toString());
             toLayer3(B, ackPacket);
             numAck++;
         } else {
@@ -448,6 +402,14 @@ public class StudentNetworkSimulator extends NetworkSimulator {
             sendAckB();
             numAck++;
         }
+    }
+
+    protected void printArray(int[] arr) {
+        System.out.print("[");
+        for(int i: arr) {
+            System.out.print(i + ",");
+        }
+        System.out.print("]\n");
     }
 
     // This routine will be called once, before any of your other B-side
