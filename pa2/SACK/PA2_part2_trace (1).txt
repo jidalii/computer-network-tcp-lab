@@ -35953,10 +35953,10 @@ Simulator terminated at time 198414.69771416354
 
 ===============STATISTICS=======================
 Number of original packets transmitted by A:1000
-Number of retransmissions by A:2669 2700 31
+Number of retransmissions by A:2669 2700
 Number of data packets delivered to layer 5 at B:1000
-Number of ACK packets sent by B:1768 1782 14
-Number of corrupted packets:1158 1171 13
+Number of ACK packets sent by B:1768 1782
+Number of corrupted packets:1158 1171
 Ratio of lost packets:0.2779106124701122
 Ratio of corrupted packets:0.29495669893020887
 Average RTT:44.20744395737186

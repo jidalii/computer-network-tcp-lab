@@ -219,7 +219,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     }
 
     private boolean isSeqnumInSack(int seqnum, int[] sack) {
-        for (int i=0; i<sack.length; i++) {
+        for (int i = 0; i < sack.length; i++) {
             if (seqnum == sack[i]) {
                 return true;
             }
@@ -235,7 +235,6 @@ public class StudentNetworkSimulator extends NetworkSimulator {
                                 + String.valueOf(p.getSeqnum()) + ", ack:"
                                 + String.valueOf(p.getAcknum()));
                 // sentTimes[p.getSeqnum()] = -1;
-                // communicationTimes[p.getSeqnum()] = getTime();
                 toLayer3(A, p);
                 restartTimerA();
                 numRetransmit++;
@@ -279,20 +278,16 @@ public class StudentNetworkSimulator extends NetworkSimulator {
                 if (num == seq && sentTimes[num] != -1) {
                     totalRTT += getTime() - sentTimes[num];
                     RTTCount++;
-                    // uniqueSet.add(num);
                     sentTimes[num] = -1;
                 }
 
-                // if (num == seq && communicationTimes[num] != -1) {
                 if (num == seq) {
                     totalCommunicationTime += getTime() - communicationTimes[num];
                     communicationCount++;
-                    // communicationTimes[num] = -1;
                 }
 
             } while (num != seq);
         } else { // handle duplicate ack
-            // retransmit 1st uack packet
             transmitAllMissingPacketsOfSwndInSack(packet.sack, seq);
         }
 
@@ -390,11 +385,8 @@ public class StudentNetworkSimulator extends NetworkSimulator {
 
             // Send ACK with SACK array
             Packet ackPacket = new Packet(lastSeq, 1, -1, "", sackArray);
-            // ackPacket.sack = sackArray;
             ackPacket.setChecksum(computeChecksum(ackPacket));
             System.out.println("B sends SACK:" + Arrays.toString(ackPacket.sack));
-            // printArray(ackPacket.sack);
-            // System.out.println("SACK:" + ackPacket.sack.toString());
             toLayer3(B, ackPacket);
             numAck++;
         } else {
@@ -406,7 +398,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
 
     protected void printArray(int[] arr) {
         System.out.print("[");
-        for(int i: arr) {
+        for (int i : arr) {
             System.out.print(i + ",");
         }
         System.out.print("]\n");
